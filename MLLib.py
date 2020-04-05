@@ -1,4 +1,5 @@
 import numpy as np
+import random
 from collections import Counter
 
 class LogisticRegression():
@@ -212,6 +213,139 @@ class NaiveBayes():
 
         return float(sum(y_predictions == y_true[0])) / float(len(y_true[0])) * 100
 
+class KMeans():
+
+    def __init__(self, n_clusters: int, max_k_means: bool):
+
+        """
+        :param n_clusters: int :- Number of clusters to fit on the dataset
+        :param max_k_means: bool :- Boolean variable indicating a different approach to select
+                                    initial cluster centroid  """
+
+        self.n_clusters = n_clusters
+        self.max_k_means = max_k_means
+        self.centroids = None
+        self.cluster_assignments = dict()
+
+
+    def __objective_function(self, centroids: np.ndarray, cluster_assignments: dict):
+
+        """
+        :param centroids: np.ndarray :- Cluster centroid vector
+        :param cluster_assignments: dict :- Hashmap mapping cluster to its points
+        :output: Returns the sum of squared errors (SSE) """
+
+        cost: float = 0.0
+
+        for cluster in range(0, self.n_clusters):
+            squared_error = (cluster_assignments[cluster] - centroids[cluster]) ** 2
+            cost += np.sum(squared_error)
+
+        return cost
+
+
+    def __plot_clusters(self, centroids: np.ndarray, cluster_assignments: dict, K: int):
+
+        """
+        :param centroids: np.ndarray :- Cluster centroid vector
+        :param cluster_assignments: dict :- Hashmap mapping cluster to its points
+        :param K: int :- Number of clusters """
+
+        centX = centroids[:,0]
+        centY = centroids[:,1]
+        colors = ["Red", "Blue", "Green", "Purple", "Cyan", "Orange", "Grey"]
+        plot_name = "Figure_" + str(K)
+        plt.clf()
+
+        for i in range(0, K):
+            X = cluster_assignments[i][:,0]
+            Y = cluster_assignments[i][:,1]
+            sns.scatterplot(X, Y, marker = "p", alpha = 0.6, color = colors[i], label = 'Cluster ' + str(i))
+
+        sns.scatterplot(centX, centY, marker = "*", alpha = 1, s = 170, color = "Black", label = "Centroids")
+        plt.title(str(K) + ' Clusters')
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.tight_layout()
+        plt.savefig(plot_name)
+
+
+    def fit(self, X: np.ndarray):
+
+        """
+        :param X: np.ndarray: n-dimensional input dataset """
+
+        if self.n_clusters == 0:
+            print ('Number of clusters need to be atleast 1.')
+            return
+
+        n = X.shape[0]      # Number of instances
+        m = X.shape[1]      # Number of features
+
+        self.centroids = np.array([]).reshape(0, m)
+
+        if self.max_k_means == False:
+
+            # Compute random initial cluster centroids
+            for i in range(0, self.n_clusters):
+                rand = random.randint(0, n-1)
+                self.centroids = np.append(self.centroids, X[rand].reshape(1, m), axis = 0)
+
+        else:
+
+            # The first center is random
+            rand = random.randint(0, n-1)
+            self.centroids = np.append(self.centroids, X[rand].reshape(1, m), axis = 0)
+
+            # The remaining centers should not be random.
+            # Approach: Select the samples which are farthest from the previous i-1 centers.
+            for i in range(1, self.n_clusters):
+                distances = np.zeros(n)
+                for j in range(0, i):
+                    distances += np.sqrt(np.sum((X - self.centroids[j]) ** 2, axis=1))
+
+                distances = np.divide(distances, i)
+                max_instance = np.argmax(distances)
+                self.centroids = np.append(self.centroids, X[max_instance].reshape(1, m), axis = 0)
+
+
+        while True:
+
+            # Initial empty cluster assignments
+            for cluster in range(0, self.n_clusters):
+                self.cluster_assignments[cluster] = np.array([]).reshape(0, m)
+
+            for i in range(0, n):
+                # Calculate the distance between current point and all the centroids
+                distances = np.sqrt(np.sum((X[i] - self.centroids)**2, axis = 1))
+
+                # Select the centroid with the minimum distance
+                cluster = np.argmin(distances)
+                self.cluster_assignments[cluster] = np.append(self.cluster_assignments[cluster], X[i].reshape(1, m), axis=0)
+
+            # Handling empty cluster assignments
+            for i in self.cluster_assignments.keys():
+                if len(self.cluster_assignments[i]) == 0:
+                    self.cluster_assignments[i] = np.mean(X, axis=0)
+
+
+            new_centroids = np.zeros((self.centroids.shape[0], self.centroids.shape[1]))
+
+            # Compute the new centroids
+            for i in range(0, self.n_clusters):
+                new_centroids[i] = np.mean(self.cluster_assignments[i], axis=0)
+
+            if np.array_equal(self.centroids, new_centroids):
+                break
+
+            self.centroids = new_centroids
+
+
+        #print ('Final converged centroids: \n', self.centroids)
+        #self.__plot_clusters(self.centroids, self.cluster_assignments, self.n_clusters)
+        cost = self.__objective_function(self.centroids, self.cluster_assignments)
+        return cost
+    
 
 class Preprocessing():
 
