@@ -1,5 +1,5 @@
 # ML_From_Scratch
-Implementation of some of the common machine learning algorithms in Python.
+Implementation of some of the common machine learning algorithms, in Python.
 
 Create a virtualenv and activate source
 
